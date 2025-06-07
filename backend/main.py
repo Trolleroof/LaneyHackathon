@@ -11,11 +11,15 @@ from services.ocr_service import OCRService
 from services.ai_service import AIService
 from services.document_service import DocumentService
 from services.letter_service import LetterService
+from services.chat_service import ChatService
 from models.schemas import (
     DocumentAnalysisResponse,
     ClauseAnalysis,
     LetterGenerationRequest,
-    LetterGenerationResponse
+    LetterGenerationResponse,
+    ChatRequest,
+    ChatResponse,
+    ChatMessage
 )
 from database import get_db
 from auth import get_current_user
@@ -47,6 +51,7 @@ ocr_service = OCRService()
 ai_service = AIService()
 document_service = DocumentService()
 letter_service = LetterService()
+chat_service = ChatService()
 
 @app.get("/")
 async def root():
@@ -197,36 +202,47 @@ async def explain_clause(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error explaining clause: {str(e)}")
 
-@app.post("/api/chat")
-async def tenant_chat(
-    question: str,
-    document_id: Optional[int] = None,
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat_with_assistant(
+    request: ChatRequest,
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db)
 ):
     """
-    Chat interface for tenant questions about lease terms and rights
+    Chat with the AI assistant about tenant rights and lease issues
     """
     try:
-        context = ""
-        
-        # If document_id provided, get context from the lease
-        if document_id:
-            document = await document_service.get_document_by_id(document_id, current_user["id"], db)
-            if document:
-                context = document.get("extracted_text", "")
-        
-        answer = await ai_service.answer_tenant_question(question, context)
-        
-        return {
-            "question": question,
-            "answer": answer,
-            "document_id": document_id,
-            "has_context": bool(context)
-        }
-        
+        response = await chat_service.chat(
+            user_id=current_user["id"],
+            message=request.message,
+            document_id=request.document_id,
+            chat_history=request.chat_history,
+            db=db
+        )
+        return response
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing chat: {str(e)}")
+
+@app.get("/api/chat/history")
+async def get_chat_history(
+    chat_id: Optional[int] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get chat history for the current user
+    """
+    try:
+        history = await chat_service.get_chat_history(current_user["id"], chat_id)
+        return {"chat_history": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving chat history: {str(e)}")
+
+@app.get("/api/chat/common-questions")
+async def get_common_questions():
+    """
+    Get list of common tenant questions organized by category
+    """
+    return {"categories": chat_service.get_common_questions()}
 
 @app.get("/api/letter-templates")
 async def get_letter_templates():

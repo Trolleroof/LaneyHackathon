@@ -143,4 +143,29 @@ class HealthResponse(BaseModel):
 class UploadStatus(BaseModel):
     status: str = Field(..., description="Upload processing status")
     message: str = Field(..., description="Status message")
-    progress: Optional[float] = None 
+    progress: Optional[float] = None
+
+# Chat Models
+class ChatMessage(BaseModel):
+    role: str = Field(..., description="Message role: 'user' or 'assistant'")
+    content: str = Field(..., description="Message content")
+    timestamp: Optional[datetime] = None
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., description="User's question or message")
+    document_id: Optional[int] = None
+    chat_history: List[ChatMessage] = Field(default=[], description="Previous chat messages for context")
+
+class ChatResponse(BaseModel):
+    response: str = Field(..., description="AI assistant's response")
+    suggested_questions: List[str] = Field(default=[], description="Suggested follow-up questions")
+    references: List[str] = Field(default=[], description="Referenced legal concepts or document sections")
+    chat_id: Optional[int] = None
+
+class ChatSession(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    messages: List[ChatMessage]
+    created_at: datetime
+    updated_at: datetime 

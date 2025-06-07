@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import DocumentUploader from '@/components/DocumentUploader';
+import ChatBot from '@/components/ChatBot';
 
 export default function HomePage() {
   const [showUploader, setShowUploader] = useState(false);
@@ -251,6 +252,9 @@ export default function HomePage() {
       {showUploader && (
         <DocumentUploader onClose={() => setShowUploader(false)} />
       )}
+
+      {/* Floating ChatBot */}
+      <ChatBot />
     </div>
   );
 } 
