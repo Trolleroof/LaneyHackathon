@@ -9,10 +9,8 @@ import numpy as np
 
 class OCRService:
     def __init__(self):
-        # Configure Tesseract path if needed (for Mac with Homebrew)
-        # Uncomment if you have issues finding Tesseract
-        # pytesseract.pytesseract.tesseract_cmd = '/opt/homebrew/bin/tesseract'
-        pass
+        # Configure Tesseract path for Mac with Homebrew
+        pytesseract.pytesseract.tesseract_cmd = '/opt/homebrew/bin/tesseract'
     
     async def extract_text(self, file_content: bytes, content_type: str) -> str:
         """

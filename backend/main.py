@@ -33,7 +33,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://your-frontend-domain.com"],
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "https://your-frontend-domain.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -104,7 +104,11 @@ async def upload_document(
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing document: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Document processing error: {error_details}")
+        error_msg = str(e) if str(e) else "Unknown error occurred"
+        raise HTTPException(status_code=500, detail=f"Error processing document: {error_msg}\n\nFull traceback: {error_details[:500]}")
 
 @app.post("/api/generate-letter", response_model=LetterGenerationResponse)
 async def generate_letter(
@@ -192,6 +196,106 @@ async def explain_clause(
         return {"clause": clause_text, "explanation": explanation}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error explaining clause: {str(e)}")
+
+@app.post("/api/chat")
+async def tenant_chat(
+    question: str,
+    document_id: Optional[int] = None,
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """
+    Chat interface for tenant questions about lease terms and rights
+    """
+    try:
+        context = ""
+        
+        # If document_id provided, get context from the lease
+        if document_id:
+            document = await document_service.get_document_by_id(document_id, current_user["id"], db)
+            if document:
+                context = document.get("extracted_text", "")
+        
+        answer = await ai_service.answer_tenant_question(question, context)
+        
+        return {
+            "question": question,
+            "answer": answer,
+            "document_id": document_id,
+            "has_context": bool(context)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing question: {str(e)}")
+
+@app.get("/api/letter-templates")
+async def get_letter_templates():
+    """
+    Get available letter templates
+    """
+    try:
+        templates = letter_service.get_letter_templates()
+        return {"templates": templates}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving templates: {str(e)}")
+
+@app.get("/api/dashboard")
+async def get_user_dashboard(
+    current_user: dict = Depends(get_current_user),
+    db = Depends(get_db)
+):
+    """
+    Get user dashboard with document summaries and quick stats
+    """
+    try:
+        documents = await document_service.get_user_documents(current_user["id"], db)
+        letters = await letter_service.get_user_letters(current_user["id"], db)
+        
+        # Calculate summary statistics
+        total_documents = len(documents)
+        total_letters = len(letters)
+        
+        high_risk_count = 0
+        medium_risk_count = 0
+        recent_documents = []
+        
+        for doc in documents[:5]:  # Get last 5 documents
+            analysis = doc.get("analysis", {})
+            unfair_clauses = analysis.get("unfair_clauses", [])
+            
+            # Count risk levels
+            for clause in unfair_clauses:
+                if clause.get("severity") == "high":
+                    high_risk_count += 1
+                elif clause.get("severity") == "medium":
+                    medium_risk_count += 1
+            
+            recent_documents.append({
+                "id": doc["id"],
+                "filename": doc["filename"],
+                "overall_score": analysis.get("overall_score", 0),
+                "created_at": doc["created_at"],
+                "risk_level": "high" if analysis.get("overall_score", 0) < 50 else "medium" if analysis.get("overall_score", 0) < 75 else "low"
+            })
+        
+        return {
+            "user_stats": {
+                "total_documents_analyzed": total_documents,
+                "total_letters_generated": total_letters,
+                "high_risk_clauses_found": high_risk_count,
+                "medium_risk_clauses_found": medium_risk_count
+            },
+            "recent_documents": recent_documents,
+            "quick_actions": [
+                {"action": "upload_document", "label": "Analyze New Lease", "icon": "document"},
+                {"action": "generate_letter", "label": "Write Letter to Landlord", "icon": "letter"},
+                {"action": "ask_question", "label": "Ask About Your Rights", "icon": "chat"},
+                {"action": "view_templates", "label": "Browse Letter Templates", "icon": "templates"}
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error loading dashboard: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(

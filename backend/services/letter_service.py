@@ -1,12 +1,17 @@
 import os
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-import openai
+import google.generativeai as genai
 from models.schemas import LetterType, TenantInfo, LandlordInfo
 
 class LetterService:
     def __init__(self):
-        self.openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        api_key = os.getenv("GEMINI_API_KEY")
+        if api_key and api_key != "your_gemini_api_key_here":
+            genai.configure(api_key=api_key)
+            self.gemini_client = genai.GenerativeModel('gemini-1.5-flash')
+        else:
+            self.gemini_client = None
         # In-memory storage for development
         self.letters = {}
         self.next_id = 1
@@ -42,24 +47,19 @@ class LetterService:
                 date=datetime.now().strftime("%B %d, %Y")
             )
             
-            # Generate letter using OpenAI
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a legal assistant helping tenants write professional, formal letters to their landlords. Write clear, polite but firm letters that protect tenant rights."
-                    },
-                    {
-                        "role": "user",
-                        "content": formatted_prompt
-                    }
-                ],
-                temperature=0.3,
-                max_tokens=1500
+            # Generate letter using Gemini
+            if not self.gemini_client:
+                return "Demo letter: Please set your Gemini API key to generate professional letters to your landlord."
+            
+            response = self.gemini_client.generate_content(
+                f"You are a legal assistant helping tenants write professional, formal letters to their landlords. Write clear, polite but firm letters that protect tenant rights.\n\n{formatted_prompt}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=2048,
+                )
             )
             
-            generated_letter = response.choices[0].message.content
+            generated_letter = response.text
             return generated_letter
             
         except Exception as e:
@@ -290,6 +290,35 @@ The letter should:
 - Set reasonable deadline for repairs
 - Mention potential legal remedies (rent withholding, repair and deduct)
 - Request written response with repair timeline
+- Include proper formatting with addresses and date
+""",
+
+            LetterType.GENERAL_CONCERN: """
+Write a formal letter addressing general concerns about lease terms or landlord practices. Use this information:
+
+Date: {date}
+Tenant: {tenant_name}
+Tenant Address: {tenant_address}
+Tenant Phone: {tenant_phone}
+Tenant Email: {tenant_email}
+
+Landlord: {landlord_name}
+Company: {company_name}
+Landlord Address: {landlord_address}
+
+Context: {context}
+
+Specific Issues:
+{specific_issues}
+
+The letter should:
+- Be professional and respectful
+- Clearly outline the concerns from the lease analysis
+- Reference specific problematic clauses or practices
+- Request clarification or modification of concerning terms
+- Propose reasonable solutions where appropriate
+- Reference tenant rights and fair housing practices
+- Request written response addressing the concerns
 - Include proper formatting with addresses and date
 """
         }

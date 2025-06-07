@@ -1,9 +1,6 @@
 import os
 from typing import List, Dict, Any, Optional
-import openai
-from langchain.llms import OpenAI
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
+import google.generativeai as genai
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import chromadb
 from sentence_transformers import SentenceTransformer
@@ -16,12 +13,13 @@ load_dotenv()
 
 class AIService:
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key or api_key == "your_openai_api_key_here":
-            print("Warning: OpenAI API key not set. AI features will be limited.")
-            self.openai_client = None
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key or api_key == "your_gemini_api_key_here":
+            print("Warning: Gemini API key not set. AI features will be limited.")
+            self.gemini_client = None
         else:
-            self.openai_client = openai.OpenAI(api_key=api_key)
+            genai.configure(api_key=api_key)
+            self.gemini_client = genai.GenerativeModel('gemini-1.5-flash')
         
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         self.chroma_client = chromadb.Client()
@@ -155,26 +153,47 @@ class AIService:
         """
         
         try:
-            if not self.openai_client:
+            if not self.gemini_client:
                 # Return mock data when API key is not available
                 return [ClauseAnalysis(
                     clause_text="Demo clause analysis",
-                    issue="OpenAI API key required for full analysis",
+                    issue="Gemini API key required for full analysis",
                     severity="low",
-                    explanation="Please set your OpenAI API key to get detailed clause analysis",
-                    recommendation="Add your OpenAI API key to the .env file"
+                    explanation="Please set your Gemini API key to get detailed clause analysis",
+                    recommendation="Add your Gemini API key to the .env file"
                 )]
             
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful tenant rights lawyer."},
-                    {"role": "user", "content": prompt.format(text=text_chunk)}
-                ],
-                temperature=0.3
+            response = self.gemini_client.generate_content(
+                f"You are a helpful tenant rights lawyer. ONLY respond with valid JSON, no extra text.\n\n{prompt.format(text=text_chunk)}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=2048,
+                )
             )
             
-            result = json.loads(response.choices[0].message.content)
+            # Clean up the response text and extract JSON
+            response_text = response.text.strip()
+            
+            # Try to find JSON in the response
+            try:
+                # First try parsing as-is
+                result = json.loads(response_text)
+            except json.JSONDecodeError:
+                # Try to extract JSON from markdown code blocks
+                import re
+                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group(1))
+                else:
+                    # If no JSON found, create a basic response
+                    print(f"Could not parse JSON from response: {response_text[:200]}...")
+                    return [ClauseAnalysis(
+                        clause_text="Analysis unavailable",
+                        issue="JSON parsing error",
+                        severity="low",
+                        explanation="The AI response could not be parsed properly",
+                        recommendation="Try uploading the document again"
+                    )]
             
             clause_analyses = []
             for clause_data in result.get("clauses", []):
@@ -220,24 +239,43 @@ class AIService:
         """
         
         try:
-            if not self.openai_client:
+            if not self.gemini_client:
                 # Return mock data when API key is not available
                 return [TenantRight(
                     title="Demo tenant right",
-                    description="OpenAI API key required for detailed rights analysis",
+                    description="Gemini API key required for detailed rights analysis",
                     importance="low"
                 )]
             
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a tenant rights expert."},
-                    {"role": "user", "content": prompt.format(text=text_chunk)}
-                ],
-                temperature=0.3
+            response = self.gemini_client.generate_content(
+                f"You are a tenant rights expert. ONLY respond with valid JSON, no extra text.\n\n{prompt.format(text=text_chunk)}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=2048,
+                )
             )
             
-            result = json.loads(response.choices[0].message.content)
+            # Clean up the response text and extract JSON
+            response_text = response.text.strip()
+            
+            # Try to find JSON in the response
+            try:
+                # First try parsing as-is
+                result = json.loads(response_text)
+            except json.JSONDecodeError:
+                # Try to extract JSON from markdown code blocks
+                import re
+                json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', response_text, re.DOTALL)
+                if json_match:
+                    result = json.loads(json_match.group(1))
+                else:
+                    # If no JSON found, create a basic response
+                    print(f"Could not parse tenant rights JSON from response: {response_text[:200]}...")
+                    return [TenantRight(
+                        title="Analysis unavailable",
+                        description="The AI response could not be parsed properly",
+                        importance="low"
+                    )]
             
             tenant_rights = []
             for right_data in result.get("rights", []):
@@ -274,19 +312,18 @@ class AIService:
         """
         
         try:
-            if not self.openai_client:
-                return "Demo summary: This is a sample lease analysis. Please set your OpenAI API key to get detailed document analysis and plain English summaries of your lease agreement."
+            if not self.gemini_client:
+                return "Demo summary: This is a sample lease analysis. Please set your Gemini API key to get detailed document analysis and plain English summaries of your lease agreement."
             
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful legal assistant who explains things simply."},
-                    {"role": "user", "content": prompt.format(text=document_text[:4000])}  # Limit text length
-                ],
-                temperature=0.5
+            response = self.gemini_client.generate_content(
+                f"You are a helpful legal assistant who explains things simply.\n\n{prompt.format(text=document_text[:4000])}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.5,
+                    max_output_tokens=2048,
+                )
             )
             
-            return response.choices[0].message.content
+            return response.text
             
         except Exception as e:
             return f"Error generating summary: {str(e)}"
@@ -350,19 +387,18 @@ class AIService:
         """
         
         try:
-            if not self.openai_client:
-                return "Demo explanation: This is a sample clause explanation. Please set your OpenAI API key to get detailed explanations of specific lease clauses in plain English."
+            if not self.gemini_client:
+                return "Demo explanation: This is a sample clause explanation. Please set your Gemini API key to get detailed explanations of specific lease clauses in plain English."
             
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "You are a helpful legal expert who explains complex terms simply."},
-                    {"role": "user", "content": prompt.format(clause=clause_text)}
-                ],
-                temperature=0.4
+            response = self.gemini_client.generate_content(
+                f"You are a helpful legal expert who explains complex terms simply.\n\n{prompt.format(clause=clause_text)}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.4,
+                    max_output_tokens=1024,
+                )
             )
             
-            return response.choices[0].message.content
+            return response.text
             
         except Exception as e:
             return f"Error explaining clause: {str(e)}"
@@ -392,4 +428,47 @@ class AIService:
             
         except Exception as e:
             print(f"Error finding similar clauses: {str(e)}")
-            return [] 
+            return []
+    
+    async def answer_tenant_question(self, question: str, context: str = "") -> str:
+        """
+        Answer tenant questions about lease terms and tenant rights
+        """
+        prompt = """
+        You are a helpful tenant rights expert assistant. Answer this tenant's question in simple, clear language.
+
+        {context_info}
+
+        Question: {question}
+
+        Provide:
+        1. A direct answer to their question
+        2. Relevant tenant rights information
+        3. Practical advice if applicable
+        4. When to seek legal help if serious
+
+        Keep your answer under 300 words and use simple language.
+        """
+        
+        context_info = ""
+        if context:
+            context_info = f"Here is text from their lease for context:\n\n{context[:2000]}\n\n"
+        else:
+            context_info = "No specific lease context provided.\n\n"
+        
+        try:
+            if not self.gemini_client:
+                return "Demo answer: This is a sample Q&A response. Please set your Gemini API key to get detailed answers to your tenant rights questions."
+            
+            response = self.gemini_client.generate_content(
+                f"You are a helpful tenant rights expert who explains things simply and helps renters understand their rights.\n\n{prompt.format(context_info=context_info, question=question)}",
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.4,
+                    max_output_tokens=1024,
+                )
+            )
+            
+            return response.text
+            
+        except Exception as e:
+            return f"Error answering question: {str(e)}" 

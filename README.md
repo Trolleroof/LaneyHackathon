@@ -27,10 +27,10 @@ An AI-powered assistant designed to empower renters—especially in underserved 
 - ChromaDB for vector storage
 
 ### AI/ML
-- OpenAI GPT-4 / Anthropic Claude
-- Tesseract OCR or Google Vision API
-- LangChain for AI workflows
-- Hugging Face Transformers
+- Google Gemini Flash 2.0 (fast and cost-effective)
+- Tesseract OCR for document processing
+- ChromaDB for vector storage
+- Sentence Transformers for embeddings
 
 ## Project Structure
 
@@ -76,8 +76,8 @@ Create `.env` files in both frontend and backend directories:
 
 ### Backend (.env)
 ```
+GEMINI_API_KEY=your_gemini_api_key
 DATABASE_URL=postgresql://username:password@localhost:5432/tenant_rights
-OPENAI_API_KEY=your_openai_key
 REDIS_URL=redis://localhost:6379
 SECRET_KEY=your_secret_key
 ```

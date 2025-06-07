@@ -22,6 +22,7 @@ class LetterType(str, Enum):
     LEASE_VIOLATION = "lease_violation"
     DISCRIMINATION = "discrimination"
     HABITABILITY = "habitability"
+    GENERAL_CONCERN = "general_concern"
 
 # Core Analysis Models
 class ClauseAnalysis(BaseModel):
