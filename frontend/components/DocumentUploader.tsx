@@ -13,6 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import AnalysisChatBot from './AnalysisChatBot';
 
 interface DocumentUploaderProps {
   onClose: () => void;
@@ -486,6 +487,9 @@ For educational purposes only. Consult with a legal professional for specific ad
                     📄 Download Analysis Report
                   </button>
                 </div>
+
+                {/* Contextual Chatbot */}
+                <AnalysisChatBot analysisResults={results} />
               </div>
             )}
           </div>
