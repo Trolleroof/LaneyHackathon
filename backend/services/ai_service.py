@@ -16,7 +16,13 @@ load_dotenv()
 
 class AIService:
     def __init__(self):
-        self.openai_client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key or api_key == "your_openai_api_key_here":
+            print("Warning: OpenAI API key not set. AI features will be limited.")
+            self.openai_client = None
+        else:
+            self.openai_client = openai.OpenAI(api_key=api_key)
+        
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
         self.chroma_client = chromadb.Client()
         
@@ -149,6 +155,16 @@ class AIService:
         """
         
         try:
+            if not self.openai_client:
+                # Return mock data when API key is not available
+                return [ClauseAnalysis(
+                    clause_text="Demo clause analysis",
+                    issue="OpenAI API key required for full analysis",
+                    severity="low",
+                    explanation="Please set your OpenAI API key to get detailed clause analysis",
+                    recommendation="Add your OpenAI API key to the .env file"
+                )]
+            
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[
@@ -204,6 +220,14 @@ class AIService:
         """
         
         try:
+            if not self.openai_client:
+                # Return mock data when API key is not available
+                return [TenantRight(
+                    title="Demo tenant right",
+                    description="OpenAI API key required for detailed rights analysis",
+                    importance="low"
+                )]
+            
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[
@@ -250,6 +274,9 @@ class AIService:
         """
         
         try:
+            if not self.openai_client:
+                return "Demo summary: This is a sample lease analysis. Please set your OpenAI API key to get detailed document analysis and plain English summaries of your lease agreement."
+            
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[
@@ -323,6 +350,9 @@ class AIService:
         """
         
         try:
+            if not self.openai_client:
+                return "Demo explanation: This is a sample clause explanation. Please set your OpenAI API key to get detailed explanations of specific lease clauses in plain English."
+            
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[
