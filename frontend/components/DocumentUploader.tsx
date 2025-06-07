@@ -109,7 +109,11 @@ export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
       'image/*': ['.png', '.jpg', '.jpeg', '.tiff']
     },
     maxFiles: 1,
-    disabled: uploadStatus !== 'idle'
+    disabled: uploadStatus !== 'idle',
+    multiple: false,
+    onDragEnter: () => {},
+    onDragOver: () => {},
+    onDragLeave: () => {},
   });
 
   const getSeverityColor = (severity: 'high' | 'medium' | 'low') => {
@@ -140,7 +144,7 @@ export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           className="bg-white rounded-2xl max-w-4xl max-h-[90vh] w-full overflow-hidden shadow-2xl"
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent) => e.stopPropagation()}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
@@ -166,7 +170,7 @@ export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
                   }
                 `}
               >
-                <input {...getInputProps()} />
+                <input {...getInputProps()} type="file" />
                 <CloudArrowUpIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   {isDragActive ? 'Drop your lease here' : 'Upload your lease document'}
