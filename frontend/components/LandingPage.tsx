@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   DocumentTextIcon, 
-  ShieldCheckIcon, 
+  HomeIcon, 
   ChatBubbleBottomCenterTextIcon,
   UserGroupIcon,
   ArrowRightIcon,
@@ -24,7 +24,7 @@ export default function LandingPage() {
       color: 'text-blue-600'
     },
     {
-      icon: ShieldCheckIcon,
+      icon: HomeIcon,
       title: 'Find Unfair Clauses',
       description: 'We identify potentially illegal or unfair terms that could be used against you.',
       color: 'text-red-600'
@@ -59,7 +59,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-3">
-              <ShieldCheckIcon className="h-8 w-8 text-blue-600" />
+              <HomeIcon className="h-8 w-8 text-blue-600" />
               <h1 className="text-2xl font-bold text-gray-900">Lexify</h1>
             </div>
             <button
@@ -171,7 +171,7 @@ export default function LandingPage() {
             <div className="bg-white p-8 rounded-2xl shadow-lg">
               <div className="text-center">
                 <div className="bg-blue-100 rounded-full p-4 w-20 h-20 mx-auto mb-6 flex items-center justify-center">
-                  <ShieldCheckIcon className="h-10 w-10 text-blue-600" />
+                  <HomeIcon className="h-10 w-10 text-blue-600" />
                 </div>
                 <h4 className="text-2xl font-bold text-gray-900 mb-3">Your Privacy Matters</h4>
                 <p className="text-gray-600 mb-6">
@@ -212,7 +212,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-3 mb-4">
-              <ShieldCheckIcon className="h-8 w-8 text-blue-400" />
+              <HomeIcon className="h-8 w-8 text-blue-400" />
               <h1 className="text-2xl font-bold">Lexify</h1>
             </div>
             <p className="text-gray-400 mb-6">
