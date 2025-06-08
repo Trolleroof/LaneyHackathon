@@ -1,5 +1,9 @@
 # Lexify
 
+![image](https://github.com/user-attachments/assets/a348c164-bddd-4dd5-8703-9b44992ed081)
+
+Team name: Double N
+
 An AI-powered assistant designed to empower renters—especially in underserved communities—by making lease agreements understandable and actionable.
 
 ## Features
