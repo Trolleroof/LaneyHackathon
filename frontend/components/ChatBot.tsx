@@ -155,7 +155,7 @@ export default function ChatBot() {
               <div className="flex items-center space-x-3">
                 <ChatBubbleBottomCenterTextIcon className="h-6 w-6" />
                 <div>
-                  <h3 className="font-semibold">TenantRights Assistant</h3>
+                  <h3 className="font-semibold">Lexify Assistant</h3>
                   <p className="text-blue-100 text-sm">Ask me about your tenant rights</p>
                 </div>
               </div>

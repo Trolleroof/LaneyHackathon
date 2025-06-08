@@ -133,7 +133,7 @@ PROBLEMATIC CLAUSES FOUND ({len(lease_data.get('problematic_clauses', []))}):
             except Exception as e:
                 lease_analysis_context = "Error parsing lease context"
         
-        return f"""You are TenantRights AI, a helpful and knowledgeable tenant rights assistant. You provide accurate legal information, practical advice, and empathetic support to tenants dealing with housing issues.
+        return f"""You are Lexify, a helpful and knowledgeable tenant rights assistant. You provide accurate legal information, practical advice, and empathetic support to tenants dealing with housing issues.
 
 GUIDELINES:
 - Provide accurate information about tenant rights and landlord-tenant law

@@ -29,7 +29,7 @@ load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="TenantRights AI Assistant API",
+    title="Lexify API",
     description="AI-powered assistant for analyzing lease agreements and generating tenant correspondence",
     version="1.0.0"
 )
@@ -55,7 +55,7 @@ chat_service = ChatService()
 
 @app.get("/")
 async def root():
-    return {"message": "TenantRights AI Assistant API is running"}
+    return {"message": "Lexify API is running"}
 
 @app.get("/health")
 async def health_check():

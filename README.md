@@ -1,4 +1,4 @@
-# TenantRights AI Assistant
+# Lexify
 
 An AI-powered assistant designed to empower renters—especially in underserved communities—by making lease agreements understandable and actionable.
 
