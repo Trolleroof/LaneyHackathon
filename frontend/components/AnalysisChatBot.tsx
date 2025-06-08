@@ -102,8 +102,24 @@ export default function AnalysisChatBot({ analysisResults }: AnalysisChatBotProp
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       
+      // Prepare detailed context about the lease analysis
+      const leaseContext = {
+        filename: analysisResults.filename,
+        overall_score: analysisResults.analysis.overall_score,
+        problematic_clauses: analysisResults.analysis.unfair_clauses.map(clause => ({
+          issue: clause.issue,
+          severity: clause.severity,
+          clause_text: clause.clause_text,
+          explanation: clause.explanation,
+          recommendation: clause.recommendation
+        })),
+        tenant_rights: analysisResults.analysis.tenant_rights,
+        recommendations: analysisResults.analysis.recommendations,
+        summary: analysisResults.analysis.plain_english_summary
+      };
+
       const response = await axios.post<ChatResponse>(`${apiUrl}/api/chat`, {
-        message: message,
+        message: `${message}\n\nLEASE CONTEXT: ${JSON.stringify(leaseContext)}`,
         document_id: analysisResults.document_id,
         chat_history: messages.slice(-5) // Send last 5 messages for context
       });

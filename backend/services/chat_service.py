@@ -97,25 +97,63 @@ Key Issues Found: {len(document.get('analysis_data', {}).get('unfair_clauses', [
     
     def _create_chat_prompt(self, user_message: str, conversation_context: str, document_context: str) -> str:
         """Create the prompt for the AI chat assistant"""
+        
+        # Extract lease analysis context if included in the message
+        lease_analysis_context = ""
+        if "LEASE CONTEXT:" in user_message:
+            try:
+                context_start = user_message.find("LEASE CONTEXT:")
+                context_json = user_message[context_start + len("LEASE CONTEXT:"):].strip()
+                user_message = user_message[:context_start].strip()
+                
+                import json
+                lease_data = json.loads(context_json)
+                
+                lease_analysis_context = f"""
+SPECIFIC LEASE ANALYSIS RESULTS:
+Filename: {lease_data.get('filename', 'Unknown')}
+Overall Fairness Score: {lease_data.get('overall_score', 'N/A')}/100
+Summary: {lease_data.get('summary', '')}
+
+PROBLEMATIC CLAUSES FOUND ({len(lease_data.get('problematic_clauses', []))}):
+"""
+                for i, clause in enumerate(lease_data.get('problematic_clauses', []), 1):
+                    lease_analysis_context += f"""
+{i}. Issue: {clause.get('issue', '')} (Severity: {clause.get('severity', '').upper()})
+   Clause Text: "{clause.get('clause_text', '')}"
+   Problem: {clause.get('explanation', '')}
+   Recommendation: {clause.get('recommendation', '')}
+"""
+                
+                if lease_data.get('recommendations'):
+                    lease_analysis_context += f"\nGENERAL RECOMMENDATIONS:\n"
+                    for i, rec in enumerate(lease_data.get('recommendations', []), 1):
+                        lease_analysis_context += f"{i}. {rec}\n"
+                        
+            except Exception as e:
+                lease_analysis_context = "Error parsing lease context"
+        
         return f"""You are TenantRights AI, a helpful and knowledgeable tenant rights assistant. You provide accurate legal information, practical advice, and empathetic support to tenants dealing with housing issues.
 
 GUIDELINES:
 - Provide accurate information about tenant rights and landlord-tenant law
 - Be empathetic and supportive while remaining professional
 - Always recommend consulting with a lawyer for complex legal issues
-- Cite relevant laws when applicable (focus on general principles)
-- Give practical, actionable advice
+- When lease analysis context is provided, reference the SPECIFIC clauses and issues found
+- Give practical, actionable advice based on the specific lease problems identified
 - Be concise but thorough
 - If you don't know something, say so and suggest where to find authoritative information
 
 {document_context}
+
+{lease_analysis_context}
 
 CONVERSATION HISTORY:
 {conversation_context}
 
 USER QUESTION: {user_message}
 
-Provide a helpful, accurate response. If referring to specific document analysis, make it clear. Always be supportive and practical in your advice."""
+Provide a helpful, accurate response. When lease analysis context is available, reference the specific problematic clauses by their issue names and provide targeted advice for those exact problems. Always be supportive and practical in your advice."""
 
     def _build_conversation_context(self, chat_history: List[ChatMessage], document_context: str) -> str:
         """Build conversation context from chat history"""
