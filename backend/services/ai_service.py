@@ -79,7 +79,7 @@ class AIService:
                 ids=[f"clause_{i}"]
             )
     
-    async def analyze_lease_document(self, document_text: str) -> DocumentAnalysis:
+    async def analyze_lease_document(self, document_text: str, language: str = "en") -> DocumentAnalysis:
         """
         Analyze a lease document for unfair clauses and provide explanations
         """
@@ -97,39 +97,63 @@ class AIService:
             
             for chunk in chunks:
                 # Find potentially problematic clauses
-                unfair_clauses = await self._identify_unfair_clauses(chunk)
+                unfair_clauses = await self._identify_unfair_clauses(chunk, language)
                 all_unfair_clauses.extend(unfair_clauses)
                 
                 # Extract tenant rights information
-                tenant_rights = await self._extract_tenant_rights(chunk)
+                tenant_rights = await self._extract_tenant_rights(chunk, language)
                 all_tenant_rights.extend(tenant_rights)
             
             # Generate overall summary
-            plain_english_summary = await self._generate_plain_english_summary(document_text)
+            plain_english_summary = await self._generate_plain_english_summary(document_text, language)
+            
+            # Limit to top 20 most severe problematic clauses
+            # Sort by severity (high > medium > low) and limit to 20
+            severity_order = {'high': 3, 'medium': 2, 'low': 1}
+            all_unfair_clauses.sort(key=lambda x: severity_order.get(x.severity, 0), reverse=True)
+            limited_unfair_clauses = all_unfair_clauses[:20]
             
             # Generate recommendations
-            recommendations = await self._generate_recommendations(all_unfair_clauses)
+            recommendations = await self._generate_recommendations(limited_unfair_clauses, language)
             
             return DocumentAnalysis(
-                unfair_clauses=all_unfair_clauses,
+                unfair_clauses=limited_unfair_clauses,
                 plain_english_summary=plain_english_summary,
                 tenant_rights=all_tenant_rights,
                 recommendations=recommendations,
-                overall_score=self._calculate_overall_score(all_unfair_clauses)
+                overall_score=self._calculate_overall_score(limited_unfair_clauses)
             )
             
         except Exception as e:
             raise Exception(f"Error analyzing document: {str(e)}")
     
-    async def _identify_unfair_clauses(self, text_chunk: str) -> List[ClauseAnalysis]:
+    async def _identify_unfair_clauses(self, text_chunk: str, language: str = "en") -> List[ClauseAnalysis]:
         """
         Identify potentially unfair or problematic clauses in a text chunk
         """
-        prompt = """
+        # Language mapping for instructions
+        language_instructions = {
+            "en": "Respond in English",
+            "es": "Responde en español",
+            "fr": "Répondez en français", 
+            "de": "Antworten Sie auf Deutsch",
+            "it": "Rispondi in italiano",
+            "pt": "Responda em português",
+            "zh": "用中文回答",
+            "ja": "日本語で回答してください",
+            "ko": "한국어로 답변해주세요",
+            "ar": "أجب باللغة العربية"
+        }
+        
+        lang_instruction = language_instructions.get(language, "Respond in English")
+        
+        prompt = f"""
         You are a tenant rights expert lawyer. Analyze the following lease text and identify potentially unfair, illegal, or problematic clauses.
+        
+        IMPORTANT: {lang_instruction}. All explanations, issues, and recommendations must be in the requested language.
 
         Lease text:
-        {text}
+        {{text}}
 
         For each problematic clause you find, provide:
         1. The exact clause text
@@ -139,17 +163,17 @@ class AIService:
         5. Recommended action
 
         Format your response as JSON with this structure:
-        {{
+        {{{{
             "clauses": [
-                {{
+                {{{{
                     "clause_text": "exact text from lease",
                     "issue": "brief description of the problem",
                     "severity": "high/medium/low",
                     "explanation": "plain English explanation",
                     "recommendation": "what the tenant should do"
-                }}
+                }}}}
             ]
-        }}
+        }}}}
         """
         
         try:
@@ -211,15 +235,33 @@ class AIService:
             print(f"Error identifying unfair clauses: {str(e)}")
             return []
     
-    async def _extract_tenant_rights(self, text_chunk: str) -> List[TenantRight]:
+    async def _extract_tenant_rights(self, text_chunk: str, language: str = "en") -> List[TenantRight]:
         """
         Extract tenant rights and obligations from the lease text
         """
-        prompt = """
+        # Language mapping for instructions
+        language_instructions = {
+            "en": "Respond in English",
+            "es": "Responde en español",
+            "fr": "Répondez en français", 
+            "de": "Antworten Sie auf Deutsch",
+            "it": "Rispondi in italiano",
+            "pt": "Responda em português",
+            "zh": "用中文回答",
+            "ja": "日本語で回答してください",
+            "ko": "한국어로 답변해주세요",
+            "ar": "أجب باللغة العربية"
+        }
+        
+        lang_instruction = language_instructions.get(language, "Respond in English")
+        
+        prompt = f"""
         Analyze this lease text and extract the key tenant rights and obligations.
+        
+        IMPORTANT: {lang_instruction}. All titles and descriptions must be in the requested language.
 
         Lease text:
-        {text}
+        {{text}}
 
         Identify:
         1. Rights the tenant has
@@ -227,15 +269,15 @@ class AIService:
         3. Important deadlines or procedures
 
         Format as JSON:
-        {{
+        {{{{
             "rights": [
-                {{
+                {{{{
                     "title": "Right name",
                     "description": "What this right means",
                     "importance": "high/medium/low"
-                }}
+                }}}}
             ]
-        }}
+        }}}}
         """
         
         try:
@@ -291,13 +333,31 @@ class AIService:
             print(f"Error extracting tenant rights: {str(e)}")
             return []
     
-    async def _generate_plain_english_summary(self, document_text: str) -> str:
+    async def _generate_plain_english_summary(self, document_text: str, language: str = "en") -> str:
         """
         Generate a plain English summary of the lease document
         """
-        prompt = """
+        # Language mapping for instructions
+        language_instructions = {
+            "en": "Respond in English",
+            "es": "Responde en español",
+            "fr": "Répondez en français", 
+            "de": "Antworten Sie auf Deutsch",
+            "it": "Rispondi in italiano",
+            "pt": "Responda em português",
+            "zh": "用中文回答",
+            "ja": "日本語で回答してください",
+            "ko": "한국어로 답변해주세요",
+            "ar": "أجب باللغة العربية"
+        }
+        
+        lang_instruction = language_instructions.get(language, "Respond in English")
+        
+        prompt = f"""
         You are helping low-income renters understand their lease agreements. 
-        Summarize this lease document in plain, simple English that a 6th grader could understand.
+        Summarize this lease document in plain, simple language that a 6th grader could understand.
+        
+        IMPORTANT: {lang_instruction}. The entire summary must be in the requested language.
 
         Focus on:
         - Key terms and conditions
@@ -308,7 +368,7 @@ class AIService:
         Keep it under 300 words and use simple language.
 
         Lease document:
-        {text}
+        {{text}}
         """
         
         try:
@@ -328,12 +388,63 @@ class AIService:
         except Exception as e:
             return f"Error generating summary: {str(e)}"
     
-    async def _generate_recommendations(self, unfair_clauses: List[ClauseAnalysis]) -> List[str]:
+    async def _generate_recommendations(self, unfair_clauses: List[ClauseAnalysis], language: str = "en") -> List[str]:
         """
         Generate actionable recommendations based on identified issues
         """
+        # Language-specific recommendations
+        recommendations_by_language = {
+            "en": {
+                "standard": "Your lease appears to be fairly standard. Review it carefully and keep a copy for your records.",
+                "urgent": "🚨 URGENT: This lease contains potentially illegal clauses. Consider consulting with a tenant rights organization or legal aid before signing.",
+                "multiple": "⚠️ Multiple concerning clauses found. Document everything and consider negotiating with your landlord.",
+                "general": [
+                    "📋 Keep detailed records of all communications with your landlord",
+                    "📞 Know your local tenant rights hotline number",
+                    "💰 Understand your security deposit rights",
+                    "🏠 Take photos of the property condition before moving in"
+                ]
+            },
+            "es": {
+                "standard": "Su contrato de arrendamiento parece ser bastante estándar. Revíselo cuidadosamente y guarde una copia para sus registros.",
+                "urgent": "🚨 URGENTE: Este contrato contiene cláusulas potencialmente ilegales. Considere consultar con una organización de derechos de inquilinos o asistencia legal antes de firmar.",
+                "multiple": "⚠️ Se encontraron múltiples cláusulas preocupantes. Documente todo y considere negociar con su arrendador.",
+                "general": [
+                    "📋 Mantenga registros detallados de todas las comunicaciones con su arrendador",
+                    "📞 Conozca el número de la línea directa de derechos de inquilinos de su localidad",
+                    "💰 Comprenda sus derechos sobre el depósito de seguridad",
+                    "🏠 Tome fotos del estado de la propiedad antes de mudarse"
+                ]
+            },
+            "fr": {
+                "standard": "Votre bail semble être assez standard. Examinez-le attentivement et gardez une copie pour vos dossiers.",
+                "urgent": "🚨 URGENT: Ce bail contient des clauses potentiellement illégales. Envisagez de consulter une organisation de droits des locataires ou une aide juridique avant de signer.",
+                "multiple": "⚠️ Plusieurs clauses préoccupantes trouvées. Documentez tout et envisagez de négocier avec votre propriétaire.",
+                "general": [
+                    "📋 Tenez des registres détaillés de toutes les communications avec votre propriétaire",
+                    "📞 Connaissez le numéro de la ligne d'assistance des droits des locataires de votre région",
+                    "💰 Comprenez vos droits concernant le dépôt de garantie",
+                    "🏠 Prenez des photos de l'état de la propriété avant d'emménager"
+                ]
+            },
+            "de": {
+                "standard": "Ihr Mietvertrag scheint ziemlich standard zu sein. Prüfen Sie ihn sorgfältig und bewahren Sie eine Kopie für Ihre Unterlagen auf.",
+                "urgent": "🚨 DRINGEND: Dieser Mietvertrag enthält möglicherweise illegale Klauseln. Erwägen Sie, sich vor der Unterzeichnung an eine Mieterrechtsorganisation oder Rechtshilfe zu wenden.",
+                "multiple": "⚠️ Mehrere bedenkliche Klauseln gefunden. Dokumentieren Sie alles und erwägen Sie Verhandlungen mit Ihrem Vermieter.",
+                "general": [
+                    "📋 Führen Sie detaillierte Aufzeichnungen über alle Kommunikationen mit Ihrem Vermieter",
+                    "📞 Kennen Sie die örtliche Mieterrechts-Hotline-Nummer",
+                    "💰 Verstehen Sie Ihre Rechte bezüglich der Kaution",
+                    "🏠 Machen Sie Fotos vom Zustand der Immobilie vor dem Einzug"
+                ]
+            }
+        }
+        
+        # Default to English if language not supported
+        recs = recommendations_by_language.get(language, recommendations_by_language["en"])
+        
         if not unfair_clauses:
-            return ["Your lease appears to be fairly standard. Review it carefully and keep a copy for your records."]
+            return [recs["standard"]]
         
         high_severity = [c for c in unfair_clauses if c.severity == "high"]
         medium_severity = [c for c in unfair_clauses if c.severity == "medium"]
@@ -341,17 +452,12 @@ class AIService:
         recommendations = []
         
         if high_severity:
-            recommendations.append("🚨 URGENT: This lease contains potentially illegal clauses. Consider consulting with a tenant rights organization or legal aid before signing.")
+            recommendations.append(recs["urgent"])
         
         if len(unfair_clauses) >= 3:
-            recommendations.append("⚠️ Multiple concerning clauses found. Document everything and consider negotiating with your landlord.")
+            recommendations.append(recs["multiple"])
         
-        recommendations.extend([
-            "📋 Keep detailed records of all communications with your landlord",
-            "📞 Know your local tenant rights hotline number",
-            "💰 Understand your security deposit rights",
-            "🏠 Take photos of the property condition before moving in"
-        ])
+        recommendations.extend(recs["general"])
         
         return recommendations
     

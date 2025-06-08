@@ -9,11 +9,13 @@ import {
   CloudArrowUpIcon,
   ExclamationTriangleIcon,
   CheckCircleIcon,
-  ArrowPathIcon 
+  ArrowPathIcon,
+  LanguageIcon
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import AnalysisChatBot from './AnalysisChatBot';
+import { jsPDF } from 'jspdf';
 
 interface DocumentUploaderProps {
   onClose: () => void;
@@ -41,6 +43,19 @@ interface AnalysisResults {
   };
 }
 
+const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+  { code: 'pt', name: 'Português', flag: '🇵🇹' },
+  { code: 'zh', name: '中文', flag: '🇨🇳' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: 'ko', name: '한국어', flag: '🇰🇷' },
+  { code: 'ar', name: 'العربية', flag: '🇸🇦' }
+];
+
 export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'processing' | 'complete' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
@@ -48,6 +63,7 @@ export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingLetter, setIsGeneratingLetter] = useState(false);
   const [generatedLetter, setGeneratedLetter] = useState<string | null>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -65,6 +81,7 @@ export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
       
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('language', selectedLanguage);
       
       // Simulate progress updates
       const progressInterval = setInterval(() => {
@@ -104,7 +121,7 @@ export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
       setError(errorMessage);
       toast.error(errorMessage);
     }
-  }, []);
+  }, [selectedLanguage]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -152,6 +169,7 @@ export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
       const response = await axios.post(`${apiUrl}/api/generate-letter`, {
         letter_type: "general_concern",
         context: JSON.stringify(letterContext),
+        language: selectedLanguage,
         tenant_info: {
           name: "Tenant", // Could be made dynamic
           address: "Your Address"
@@ -176,11 +194,137 @@ export default function DocumentUploader({ onClose }: DocumentUploaderProps) {
   const handleDownloadReport = () => {
     if (!results) return;
     
-    // Create a comprehensive report
-    const reportContent = `
+    try {
+      // Create a new PDF document
+      const pdf = new jsPDF();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const lineHeight = 6;
+      let yPosition = margin;
+
+      // Helper function to clean text and remove problematic characters
+      const cleanText = (text: string): string => {
+        return text
+          .replace(/[^\x00-\x7F]/g, '') // Remove non-ASCII characters
+          .replace(/Ø=ÜÈ/g, '') // Remove specific encoding artifacts
+          .replace(/Ø=Üþ/g, '') // Remove specific encoding artifacts
+          .replace(/Ø=Ü°/g, '') // Remove specific encoding artifacts
+          .replace(/Ø<ßa/g, '') // Remove specific encoding artifacts
+          .trim();
+      };
+
+      // Helper function to add text with word wrapping
+      const addText = (text: string, fontSize: number = 10, isBold: boolean = false) => {
+        const cleanedText = cleanText(text);
+        pdf.setFontSize(fontSize);
+        if (isBold) {
+          pdf.setFont('helvetica', 'bold');
+        } else {
+          pdf.setFont('helvetica', 'normal');
+        }
+        
+        const lines = pdf.splitTextToSize(cleanedText, pageWidth - 2 * margin);
+        
+        // Check if we need a new page
+        if (yPosition + (lines.length * lineHeight) > pageHeight - margin) {
+          pdf.addPage();
+          yPosition = margin;
+        }
+        
+        pdf.text(lines, margin, yPosition);
+        yPosition += lines.length * lineHeight + 3;
+      };
+
+      // Helper function to add a section break
+      const addSectionBreak = () => {
+        yPosition += 5;
+      };
+
+      // Title
+      addText('LEASE ANALYSIS REPORT', 18, true);
+      addSectionBreak();
+
+      // Document info
+      addText(`Generated: ${new Date().toLocaleDateString()}`, 10);
+      addText(`Document: ${results.filename}`, 10);
+      const selectedLang = SUPPORTED_LANGUAGES.find(lang => lang.code === selectedLanguage);
+      addText(`Language: ${selectedLang?.flag} ${selectedLang?.name}`, 10);
+      addSectionBreak();
+
+      // Overall Score
+      const scoreColor: [number, number, number] = results.analysis.overall_score >= 80 ? [0, 128, 0] : 
+                        results.analysis.overall_score >= 60 ? [255, 165, 0] : [255, 0, 0];
+      pdf.setTextColor(scoreColor[0], scoreColor[1], scoreColor[2]);
+      addText(`OVERALL FAIRNESS SCORE: ${results.analysis.overall_score}/100`, 14, true);
+      pdf.setTextColor(0, 0, 0); // Reset to black
+      addSectionBreak();
+
+      // Summary
+      addText('SUMMARY:', 12, true);
+      addText(results.analysis.plain_english_summary, 10);
+      addSectionBreak();
+
+      // Problematic Clauses
+      if (results.analysis.unfair_clauses.length > 0) {
+        addText(`PROBLEMATIC CLAUSES (${results.analysis.unfair_clauses.length}):`, 12, true);
+        
+        results.analysis.unfair_clauses.forEach((clause, index) => {
+          // Set color based on severity
+          const severityColor: [number, number, number] = clause.severity === 'high' ? [255, 0, 0] : 
+                               clause.severity === 'medium' ? [255, 165, 0] : [0, 0, 255];
+          
+          pdf.setTextColor(severityColor[0], severityColor[1], severityColor[2]);
+          addText(`${index + 1}. ${clause.issue} (${clause.severity.toUpperCase()} PRIORITY)`, 11, true);
+          pdf.setTextColor(0, 0, 0);
+          
+          addText(`Clause: "${clause.clause_text}"`, 9);
+          addText(`Explanation: ${clause.explanation}`, 9);
+          addText(`Recommended Action: ${clause.recommendation}`, 9);
+          addSectionBreak();
+        });
+      }
+
+      // Tenant Rights
+      if (results.analysis.tenant_rights.length > 0) {
+        addText('YOUR RIGHTS & OBLIGATIONS:', 12, true);
+        results.analysis.tenant_rights.forEach((right, index) => {
+          addText(`${index + 1}. ${right.title}`, 10, true);
+          addText(`   ${right.description}`, 9);
+        });
+        addSectionBreak();
+      }
+
+      // Recommendations
+      if (results.analysis.recommendations.length > 0) {
+        addText('RECOMMENDATIONS:', 12, true);
+        results.analysis.recommendations.forEach((rec, index) => {
+          addText(`${index + 1}. ${rec}`, 10);
+        });
+        addSectionBreak();
+      }
+
+      // Footer
+      pdf.setTextColor(128, 128, 128);
+      addText('Generated by TenantRights AI Assistant', 8);
+      addText('For educational purposes only. Consult with a legal professional for specific advice.', 8);
+
+      // Save the PDF
+      const langSuffix = selectedLanguage !== 'en' ? `-${selectedLanguage}` : '';
+      const filename = `lease-analysis-${results.filename.replace(/\.[^/.]+$/, '')}${langSuffix}-${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(filename);
+      
+      toast.success('PDF report downloaded successfully!');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Failed to generate PDF. Falling back to text format.');
+      
+      // Fallback to text format if PDF fails
+      const reportContent = `
 LEASE ANALYSIS REPORT
 Generated: ${new Date().toLocaleDateString()}
 Document: ${results.filename}
+Language: ${SUPPORTED_LANGUAGES.find(lang => lang.code === selectedLanguage)?.name}
 
 OVERALL FAIRNESS SCORE: ${results.analysis.overall_score}/100
 
@@ -207,20 +351,19 @@ ${results.analysis.recommendations.map((rec, index) => `${index + 1}. ${rec}`).j
 ---
 Generated by TenantRights AI Assistant
 For educational purposes only. Consult with a legal professional for specific advice.
-    `;
-    
-    // Create and download the file
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `lease-analysis-${results.filename.replace(/\.[^/.]+$/, '')}-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast.success('Report downloaded successfully!');
+      `;
+      
+      const blob = new Blob([reportContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const langSuffix = selectedLanguage !== 'en' ? `-${selectedLanguage}` : '';
+      a.download = `lease-analysis-${results.filename.replace(/\.[^/.]+$/, '')}${langSuffix}-${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   };
 
   return (
@@ -253,28 +396,52 @@ For educational purposes only. Consult with a legal professional for specific ad
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
             {/* Upload Area */}
             {uploadStatus === 'idle' && (
-              <div
-                {...getRootProps()}
-                className={`
-                  border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors
-                  ${isDragActive 
-                    ? 'border-blue-400 bg-blue-50' 
-                    : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                  }
-                `}
-              >
-                <input {...getInputProps()} type="file" />
-                <CloudArrowUpIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  {isDragActive ? 'Drop your lease here' : 'Upload your lease document'}
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Drag and drop your lease PDF or image, or click to browse
-                </p>
-                <p className="text-sm text-gray-500">
-                  Supports PDF, PNG, JPG, TIFF • Max 10MB
-                </p>
-              </div>
+              <>
+                <div
+                  {...getRootProps()}
+                  className={`
+                    border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors
+                    ${isDragActive 
+                      ? 'border-blue-400 bg-blue-50' 
+                      : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                    }
+                  `}
+                >
+                  <input {...getInputProps()} type="file" />
+                  <CloudArrowUpIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    {isDragActive ? 'Drop your lease here' : 'Upload your lease document'}
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Drag and drop your lease PDF or image, or click to browse
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Supports PDF, PNG, JPG, TIFF • Max 10MB
+                  </p>
+                </div>
+
+                {/* Language Selection */}
+                <div className="mt-6 bg-gray-50 rounded-xl p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <LanguageIcon className="h-5 w-5 text-gray-600" />
+                    <h4 className="text-sm font-medium text-gray-900">Analysis Language (Optional)</h4>
+                  </div>
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                  >
+                    {SUPPORTED_LANGUAGES.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.flag} {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    All analysis results, reports, and letters will be generated in your selected language.
+                  </p>
+                </div>
+              </>
             )}
 
             {/* Loading States */}
@@ -443,25 +610,16 @@ For educational purposes only. Consult with a legal professional for specific ad
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
-                  {/* Debug info */}
-                  <div className="text-xs text-gray-500 mb-2">
-                    Debug: uploadStatus={uploadStatus}, results={results ? 'exists' : 'null'}, 
-                    handleGenerateLetter={typeof handleGenerateLetter}, 
-                    handleDownloadReport={typeof handleDownloadReport}
-                  </div>
+                <div className="flex gap-4 pt-6 border-t border-gray-200">
                   <button 
                     type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log('Generate Letter button clicked!');
-                      console.log('handleGenerateLetter function:', typeof handleGenerateLetter);
-                      console.log('results:', results);
                       handleGenerateLetter();
                     }}
                     disabled={isGeneratingLetter}
-                    className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-1/2 bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isGeneratingLetter ? (
                       <>
@@ -477,14 +635,11 @@ For educational purposes only. Consult with a legal professional for specific ad
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log('Download Report button clicked!');
-                      console.log('handleDownloadReport function:', typeof handleDownloadReport);
-                      console.log('results:', results);
                       handleDownloadReport();
                     }}
-                    className="flex-1 bg-white text-blue-600 border-2 border-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition-colors cursor-pointer"
+                    className="w-1/2 bg-white text-blue-600 border-2 border-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition-colors"
                   >
-                    📄 Download Analysis Report
+                    📄 Download PDF Report
                   </button>
                 </div>
 

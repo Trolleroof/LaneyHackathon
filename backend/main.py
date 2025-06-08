@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
 import uvicorn
@@ -64,6 +64,7 @@ async def health_check():
 @app.post("/api/upload-document", response_model=DocumentAnalysisResponse)
 async def upload_document(
     file: UploadFile = File(...),
+    language: str = Form("en"),
     current_user: dict = Depends(get_current_user),
     db = Depends(get_db)
 ):
@@ -86,7 +87,7 @@ async def upload_document(
         extracted_text = await ocr_service.extract_text(file_content, file.content_type)
         
         # Analyze document with AI
-        analysis = await ai_service.analyze_lease_document(extracted_text)
+        analysis = await ai_service.analyze_lease_document(extracted_text, language=language)
         
         # Save document analysis to database
         document_id = await document_service.save_document_analysis(
@@ -131,7 +132,8 @@ async def generate_letter(
             context=request.context,
             tenant_info=request.tenant_info,
             landlord_info=request.landlord_info,
-            specific_issues=request.specific_issues
+            specific_issues=request.specific_issues,
+            language=request.language
         )
         
         # Save generated letter to database

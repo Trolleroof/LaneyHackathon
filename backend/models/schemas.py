@@ -77,6 +77,7 @@ class LetterGenerationRequest(BaseModel):
     tenant_info: TenantInfo = Field(..., description="Tenant's information")
     landlord_info: LandlordInfo = Field(..., description="Landlord's information")
     specific_issues: List[str] = Field(default=[], description="Specific issues to address")
+    language: str = Field(default="en", description="Language code for the generated letter")
     requested_action: Optional[str] = None
     deadline: Optional[str] = None
 

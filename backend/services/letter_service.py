@@ -22,14 +22,15 @@ class LetterService:
         context: str,
         tenant_info: TenantInfo,
         landlord_info: LandlordInfo,
-        specific_issues: List[str]
+        specific_issues: List[str],
+        language: str = "en"
     ) -> str:
         """
         Generate a formal letter based on the specified type and context
         """
         try:
             # Get the appropriate template and prompt
-            prompt = self._get_letter_prompt(letter_type)
+            prompt = self._get_letter_prompt(letter_type, language)
             
             # Format the prompt with user information
             formatted_prompt = prompt.format(
@@ -51,8 +52,24 @@ class LetterService:
             if not self.gemini_client:
                 return "Demo letter: Please set your Gemini API key to generate professional letters to your landlord."
             
+            # Language instructions
+            language_instructions = {
+                "en": "Write the letter in English",
+                "es": "Escribe la carta en español",
+                "fr": "Rédigez la lettre en français", 
+                "de": "Schreiben Sie den Brief auf Deutsch",
+                "it": "Scrivi la lettera in italiano",
+                "pt": "Escreva a carta em português",
+                "zh": "用中文写信",
+                "ja": "日本語で手紙を書いてください",
+                "ko": "한국어로 편지를 써주세요",
+                "ar": "اكتب الرسالة باللغة العربية"
+            }
+            
+            lang_instruction = language_instructions.get(language, "Write the letter in English")
+            
             response = self.gemini_client.generate_content(
-                f"You are a legal assistant helping tenants write professional, formal letters to their landlords. Write clear, polite but firm letters that protect tenant rights.\n\n{formatted_prompt}",
+                f"You are a legal assistant helping tenants write professional, formal letters to their landlords. Write clear, polite but firm letters that protect tenant rights.\n\nIMPORTANT: {lang_instruction}. The entire letter must be in the requested language.\n\n{formatted_prompt}",
                 generation_config=genai.types.GenerationConfig(
                     temperature=0.3,
                     max_output_tokens=2048,
@@ -65,12 +82,30 @@ class LetterService:
         except Exception as e:
             raise Exception(f"Letter generation failed: {str(e)}")
     
-    def _get_letter_prompt(self, letter_type: LetterType) -> str:
+    def _get_letter_prompt(self, letter_type: LetterType, language: str = "en") -> str:
         """
         Get the appropriate prompt template for each letter type
         """
+        # Language instructions
+        language_instructions = {
+            "en": "Write the letter in English",
+            "es": "Escribe la carta en español",
+            "fr": "Rédigez la lettre en français", 
+            "de": "Schreiben Sie den Brief auf Deutsch",
+            "it": "Scrivi la lettera in italiano",
+            "pt": "Escreva a carta em português",
+            "zh": "用中文写信",
+            "ja": "日本語で手紙を書いてください",
+            "ko": "한국어로 편지를 써주세요",
+            "ar": "اكتب الرسالة باللغة العربية"
+        }
+        
+        lang_instruction = language_instructions.get(language, "Write the letter in English")
+        
         templates = {
             LetterType.REPAIR_REQUEST: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter requesting repairs from a landlord. Use this information:
 
 Date: {date}
@@ -98,6 +133,8 @@ The letter should:
 """,
 
             LetterType.RENT_DISPUTE: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter regarding a rent dispute. Use this information:
 
 Date: {date}
@@ -126,6 +163,8 @@ The letter should:
 """,
 
             LetterType.SECURITY_DEPOSIT: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter regarding security deposit return. Use this information:
 
 Date: {date}
@@ -154,6 +193,8 @@ The letter should:
 """,
 
             LetterType.NO_NOTICE_ENTRY: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter regarding unauthorized entry by landlord. Use this information:
 
 Date: {date}
@@ -182,6 +223,8 @@ The letter should:
 """,
 
             LetterType.NOISE_COMPLAINT: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter about noise issues. Use this information:
 
 Date: {date}
@@ -210,6 +253,8 @@ The letter should:
 """,
 
             LetterType.LEASE_VIOLATION: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter about landlord lease violations. Use this information:
 
 Date: {date}
@@ -238,6 +283,8 @@ The letter should:
 """,
 
             LetterType.DISCRIMINATION: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter regarding housing discrimination. Use this information:
 
 Date: {date}
@@ -266,6 +313,8 @@ The letter should:
 """,
 
             LetterType.HABITABILITY: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter about habitability issues. Use this information:
 
 Date: {date}
@@ -294,6 +343,8 @@ The letter should:
 """,
 
             LetterType.GENERAL_CONCERN: """
+IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+
 Write a formal letter addressing general concerns about lease terms or landlord practices. Use this information:
 
 Date: {date}
