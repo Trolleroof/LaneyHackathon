@@ -131,46 +131,55 @@ class AIService:
         """
         Identify potentially unfair or problematic clauses in a text chunk
         """
-        # Language mapping for instructions
+        # Force English if language parameter is 'en' or not specified properly
+        if language not in ["es", "fr", "de", "it", "pt", "zh", "ja", "ko", "ar"]:
+            language = "en"
+        
+        # Enhanced language mapping with stronger instructions
         language_instructions = {
-            "en": "Respond in English",
-            "es": "Responde en español",
-            "fr": "Répondez en français", 
-            "de": "Antworten Sie auf Deutsch",
-            "it": "Rispondi in italiano",
-            "pt": "Responda em português",
-            "zh": "用中文回答",
-            "ja": "日本語で回答してください",
-            "ko": "한국어로 답변해주세요",
-            "ar": "أجب باللغة العربية"
+            "en": "RESPOND ONLY IN ENGLISH. DO NOT USE SPANISH OR ANY OTHER LANGUAGE. ALL TEXT MUST BE IN ENGLISH.",
+            "es": "Responde ÚNICAMENTE en español. NO uses inglés ni ningún otro idioma.",
+            "fr": "Répondez UNIQUEMENT en français. N'utilisez pas l'anglais ou d'autres langues.", 
+            "de": "Antworten Sie NUR auf Deutsch. Verwenden Sie kein Englisch oder andere Sprachen.",
+            "it": "Rispondi SOLO in italiano. Non usare inglese o altre lingue.",
+            "pt": "Responda APENAS em português. Não use inglês ou outras línguas.",
+            "zh": "只用中文回答。不要使用英文或其他语言。",
+            "ja": "日本語のみで回答してください。英語や他の言語を使用しないでください。",
+            "ko": "한국어로만 답변해주세요. 영어나 다른 언어를 사용하지 마세요.",
+            "ar": "أجب باللغة العربية فقط. لا تستخدم الإنجليزية أو أي لغة أخرى."
         }
         
-        lang_instruction = language_instructions.get(language, "Respond in English")
+        lang_instruction = language_instructions.get(language, language_instructions["en"])
         
         prompt = f"""
         You are a tenant rights expert lawyer. Analyze the following lease text and identify potentially unfair, illegal, or problematic clauses.
         
-        CRITICAL INSTRUCTION: {lang_instruction}. You MUST write ALL text fields in the requested language. Do NOT use English if another language is requested.
+        CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
+        
+        IMPORTANT: You MUST write ALL text fields (clause_text, issue, explanation, recommendation) in the specified language. 
+        If the language is 'en' or English, write EVERYTHING in English. 
+        If the language is 'es' or Spanish, write EVERYTHING in Spanish.
+        DO NOT MIX LANGUAGES. STAY CONSISTENT WITH THE SPECIFIED LANGUAGE.
 
         Lease text:
         {{text}}
 
         For each problematic clause you find, provide:
-        1. A translated summary of the clause (in requested language)
-        2. Why it's problematic (in requested language)
+        1. A summary of the clause (in the specified language)
+        2. Why it's problematic (in the specified language)
         3. The severity (high, medium, low)
-        4. Clear explanation in the requested language
-        5. Recommended action in the requested language
+        4. Clear explanation in the specified language
+        5. Recommended action in the specified language
 
         Format your response as JSON with this structure:
         {{{{
             "clauses": [
                 {{{{
-                    "clause_text": "translated summary of the clause in requested language",
-                    "issue": "brief description of the problem in requested language",
+                    "clause_text": "summary of the clause in the specified language",
+                    "issue": "brief description of the problem in the specified language",
                     "severity": "high/medium/low",
-                    "explanation": "clear explanation in requested language",
-                    "recommendation": "what the tenant should do in requested language"
+                    "explanation": "clear explanation in the specified language",
+                    "recommendation": "what the tenant should do in the specified language"
                 }}}}
             ]
         }}}}
@@ -188,9 +197,9 @@ class AIService:
                 )]
             
             response = self.gemini_client.generate_content(
-                f"You are a helpful tenant rights lawyer. ONLY respond with valid JSON, no extra text.\n\n{prompt.format(text=text_chunk)}",
+                f"You are a helpful tenant rights lawyer. Follow the language instructions exactly. ONLY respond with valid JSON, no extra text.\n\n{prompt.format(text=text_chunk)}",
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
+                    temperature=0.1,  # Lower temperature for more consistent output
                     max_output_tokens=2048,
                 )
             )
@@ -239,41 +248,50 @@ class AIService:
         """
         Extract tenant rights and obligations from the lease text
         """
-        # Language mapping for instructions
+        # Force English if language parameter is 'en' or not specified properly
+        if language not in ["es", "fr", "de", "it", "pt", "zh", "ja", "ko", "ar"]:
+            language = "en"
+        
+        # Enhanced language mapping with stronger instructions
         language_instructions = {
-            "en": "Respond in English",
-            "es": "Responde en español",
-            "fr": "Répondez en français", 
-            "de": "Antworten Sie auf Deutsch",
-            "it": "Rispondi in italiano",
-            "pt": "Responda em português",
-            "zh": "用中文回答",
-            "ja": "日本語で回答してください",
-            "ko": "한국어로 답변해주세요",
-            "ar": "أجب باللغة العربية"
+            "en": "RESPOND ONLY IN ENGLISH. DO NOT USE SPANISH OR ANY OTHER LANGUAGE. ALL TEXT MUST BE IN ENGLISH.",
+            "es": "Responde ÚNICAMENTE en español. NO uses inglés ni ningún otro idioma.",
+            "fr": "Répondez UNIQUEMENT en français. N'utilisez pas l'anglais ou d'autres langues.", 
+            "de": "Antworten Sie NUR auf Deutsch. Verwenden Sie kein Englisch oder andere Sprachen.",
+            "it": "Rispondi SOLO in italiano. Non usare inglese o altre lingue.",
+            "pt": "Responda APENAS em português. Não use inglês ou outras línguas.",
+            "zh": "只用中文回答。不要使用英文或其他语言。",
+            "ja": "日本語のみで回答してください。英語や他の言語を使用しないでください。",
+            "ko": "한국어로만 답변해주세요. 영어나 다른 언어를 사용하지 마세요.",
+            "ar": "أجب باللغة العربية فقط. لا تستخدم الإنجليزية أو أي لغة أخرى."
         }
         
-        lang_instruction = language_instructions.get(language, "Respond in English")
+        lang_instruction = language_instructions.get(language, language_instructions["en"])
         
         prompt = f"""
         Analyze this lease text and extract the key tenant rights and obligations.
         
-        CRITICAL INSTRUCTION: {lang_instruction}. You MUST write ALL text fields (title, description) in the requested language. Do NOT use English if another language is requested.
+        CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
+        
+        IMPORTANT: You MUST write ALL text fields (title, description) in the specified language. 
+        If the language is 'en' or English, write EVERYTHING in English. 
+        If the language is 'es' or Spanish, write EVERYTHING in Spanish.
+        DO NOT MIX LANGUAGES. STAY CONSISTENT WITH THE SPECIFIED LANGUAGE.
 
         Lease text:
         {{text}}
 
         Identify:
-        1. Rights the tenant has (in requested language)
-        2. Obligations the tenant must fulfill (in requested language)
-        3. Important deadlines or procedures (in requested language)
+        1. Rights the tenant has (in the specified language)
+        2. Obligations the tenant must fulfill (in the specified language)
+        3. Important deadlines or procedures (in the specified language)
 
         Format as JSON:
         {{{{
             "rights": [
                 {{{{
-                    "title": "Right name in requested language",
-                    "description": "What this right means in requested language",
+                    "title": "Right name in the specified language",
+                    "description": "What this right means in the specified language",
                     "importance": "high/medium/low"
                 }}}}
             ]
@@ -290,9 +308,9 @@ class AIService:
                 )]
             
             response = self.gemini_client.generate_content(
-                f"You are a tenant rights expert. ONLY respond with valid JSON, no extra text.\n\n{prompt.format(text=text_chunk)}",
+                f"You are a tenant rights expert. Follow the language instructions exactly. ONLY respond with valid JSON, no extra text.\n\n{prompt.format(text=text_chunk)}",
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
+                    temperature=0.1,  # Lower temperature for more consistent output
                     max_output_tokens=2048,
                 )
             )
@@ -337,27 +355,36 @@ class AIService:
         """
         Generate a plain English summary of the lease document
         """
-        # Language mapping for instructions
+        # Force English if language parameter is 'en' or not specified properly
+        if language not in ["es", "fr", "de", "it", "pt", "zh", "ja", "ko", "ar"]:
+            language = "en"
+        
+        # Enhanced language mapping with stronger instructions
         language_instructions = {
-            "en": "Respond in English",
-            "es": "Responde en español",
-            "fr": "Répondez en français", 
-            "de": "Antworten Sie auf Deutsch",
-            "it": "Rispondi in italiano",
-            "pt": "Responda em português",
-            "zh": "用中文回答",
-            "ja": "日本語で回答してください",
-            "ko": "한국어로 답변해주세요",
-            "ar": "أجب باللغة العربية"
+            "en": "RESPOND ONLY IN ENGLISH. DO NOT USE SPANISH OR ANY OTHER LANGUAGE. ALL TEXT MUST BE IN ENGLISH.",
+            "es": "Responde ÚNICAMENTE en español. NO uses inglés ni ningún otro idioma.",
+            "fr": "Répondez UNIQUEMENT en français. N'utilisez pas l'anglais ou d'autres langues.", 
+            "de": "Antworten Sie NUR auf Deutsch. Verwenden Sie kein Englisch oder andere Sprachen.",
+            "it": "Rispondi SOLO in italiano. Non usare inglese o altre lingue.",
+            "pt": "Responda APENAS em português. Não use inglês ou outras línguas.",
+            "zh": "只用中文回答。不要使用英文或其他语言。",
+            "ja": "日本語のみで回答してください。英語や他の言語を使用しないでください。",
+            "ko": "한국어로만 답변해주세요. 영어나 다른 언어를 사용하지 마세요.",
+            "ar": "أجب باللغة العربية فقط. لا تستخدم الإنجليزية أو أي لغة أخرى."
         }
         
-        lang_instruction = language_instructions.get(language, "Respond in English")
+        lang_instruction = language_instructions.get(language, language_instructions["en"])
         
         prompt = f"""
         You are helping low-income renters understand their lease agreements. 
         Summarize this lease document in plain, simple language that a 6th grader could understand.
         
-        CRITICAL INSTRUCTION: {lang_instruction}. You MUST write the ENTIRE summary in the requested language. Do NOT use English if another language is requested.
+        CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
+        
+        IMPORTANT: You MUST write the ENTIRE summary in the specified language. 
+        If the language is 'en' or English, write EVERYTHING in English. 
+        If the language is 'es' or Spanish, write EVERYTHING in Spanish.
+        DO NOT MIX LANGUAGES. STAY CONSISTENT WITH THE SPECIFIED LANGUAGE.
 
         Focus on:
         - Key terms and conditions
@@ -365,7 +392,7 @@ class AIService:
         - What the tenant needs to know
         - Any red flags or concerns
 
-        Keep it under 300 words and use simple language in the requested language.
+        Keep it under 300 words and use simple language in the specified language.
 
         Lease document:
         {{text}}
@@ -376,9 +403,9 @@ class AIService:
                 return "Demo summary: This is a sample lease analysis. Please set your Gemini API key to get detailed document analysis and plain English summaries of your lease agreement."
             
             response = self.gemini_client.generate_content(
-                f"You are a helpful legal assistant who explains things simply.\n\n{prompt.format(text=document_text[:4000])}",
+                f"You are a helpful legal assistant who explains things simply. Follow the language instructions exactly.\n\n{prompt.format(text=document_text[:4000])}",
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.5,
+                    temperature=0.3,
                     max_output_tokens=2048,
                 )
             )

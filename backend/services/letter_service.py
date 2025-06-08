@@ -52,26 +52,30 @@ class LetterService:
             if not self.gemini_client:
                 return "Demo letter: Please set your Gemini API key to generate professional letters to your landlord."
             
-            # Language instructions
+            # Force English if language parameter is 'en' or not specified properly
+            if language not in ["es", "fr", "de", "it", "pt", "zh", "ja", "ko", "ar"]:
+                language = "en"
+            
+            # Enhanced language instructions
             language_instructions = {
-                "en": "Write the letter in English",
-                "es": "Escribe la carta en español",
-                "fr": "Rédigez la lettre en français", 
-                "de": "Schreiben Sie den Brief auf Deutsch",
-                "it": "Scrivi la lettera in italiano",
-                "pt": "Escreva a carta em português",
-                "zh": "用中文写信",
-                "ja": "日本語で手紙を書いてください",
-                "ko": "한국어로 편지를 써주세요",
-                "ar": "اكتب الرسالة باللغة العربية"
+                "en": "WRITE THE ENTIRE LETTER ONLY IN ENGLISH. DO NOT USE SPANISH OR ANY OTHER LANGUAGE. ALL TEXT MUST BE IN ENGLISH.",
+                "es": "Escribe TODA la carta ÚNICAMENTE en español. NO uses inglés ni ningún otro idioma.",
+                "fr": "Rédigez TOUTE la lettre UNIQUEMENT en français. N'utilisez pas l'anglais ou d'autres langues.", 
+                "de": "Schreiben Sie den GESAMTEN Brief NUR auf Deutsch. Verwenden Sie kein Englisch oder andere Sprachen.",
+                "it": "Scrivi TUTTA la lettera SOLO in italiano. Non usare inglese o altre lingue.",
+                "pt": "Escreva TODA a carta APENAS em português. Não use inglês ou outras línguas.",
+                "zh": "只用中文写整封信。不要使用英文或其他语言。",
+                "ja": "手紙全体を日本語のみで書いてください。英語や他の言語を使用しないでください。",
+                "ko": "편지 전체를 한국어로만 써주세요. 영어나 다른 언어를 사용하지 마세요.",
+                "ar": "اكتب الرسالة كاملة باللغة العربية فقط. لا تستخدم الإنجليزية أي لغة أخرى."
             }
             
-            lang_instruction = language_instructions.get(language, "Write the letter in English")
+            lang_instruction = language_instructions.get(language, language_instructions["en"])
             
             response = self.gemini_client.generate_content(
-                f"You are a legal assistant helping tenants write professional, formal letters to their landlords. Write clear, polite but firm letters that protect tenant rights.\n\nIMPORTANT: {lang_instruction}. The entire letter must be in the requested language.\n\n{formatted_prompt}",
+                f"You are a legal assistant helping tenants write professional, formal letters to their landlords. Write clear, polite but firm letters that protect tenant rights.\n\nCRITICAL LANGUAGE INSTRUCTION: {lang_instruction}\n\nFollow the language instructions exactly.\n\n{formatted_prompt}",
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
+                    temperature=0.1,  # Lower temperature for more consistent output
                     max_output_tokens=2048,
                 )
             )
@@ -86,42 +90,46 @@ class LetterService:
         """
         Get the appropriate prompt template for each letter type
         """
-        # Language instructions
+        # Force English if language parameter is 'en' or not specified properly
+        if language not in ["es", "fr", "de", "it", "pt", "zh", "ja", "ko", "ar"]:
+            language = "en"
+        
+        # Enhanced language instructions
         language_instructions = {
-            "en": "Write the letter in English",
-            "es": "Escribe la carta en español",
-            "fr": "Rédigez la lettre en français", 
-            "de": "Schreiben Sie den Brief auf Deutsch",
-            "it": "Scrivi la lettera in italiano",
-            "pt": "Escreva a carta em português",
-            "zh": "用中文写信",
-            "ja": "日本語で手紙を書いてください",
-            "ko": "한국어로 편지를 써주세요",
-            "ar": "اكتب الرسالة باللغة العربية"
+            "en": "WRITE THE ENTIRE LETTER ONLY IN ENGLISH. DO NOT USE SPANISH OR ANY OTHER LANGUAGE. ALL TEXT MUST BE IN ENGLISH.",
+            "es": "Escribe TODA la carta ÚNICAMENTE en español. NO uses inglés ni ningún otro idioma.",
+            "fr": "Rédigez TOUTE la lettre UNIQUEMENT en français. N'utilisez pas l'anglais ou d'autres langues.", 
+            "de": "Schreiben Sie den GESAMTEN Brief NUR auf Deutsch. Verwenden Sie kein Englisch oder andere Sprachen.",
+            "it": "Scrivi TUTTA la lettera SOLO in italiano. Non usare inglese o altre lingue.",
+            "pt": "Escreva TODA a carta APENAS em português. Não use inglês ou outras línguas.",
+            "zh": "只用中文写整封信。不要使用英文或其他语言。",
+            "ja": "手紙全体を日本語のみで書いてください。英語や他の言語を使用しないでください。",
+            "ko": "편지 전체를 한국어로만 써주세요. 영어나 다른 언어를 사용하지 마세요.",
+            "ar": "اكتب الرسالة كاملة باللغة العربية فقط. لا تستخدم الإنجليزية أو أي لغة أخرى."
         }
         
-        lang_instruction = language_instructions.get(language, "Write the letter in English")
+        lang_instruction = language_instructions.get(language, language_instructions["en"])
         
         templates = {
-            LetterType.REPAIR_REQUEST: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.REPAIR_REQUEST: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter requesting repairs from a landlord. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be professional and respectful
@@ -132,25 +140,25 @@ The letter should:
 - Include proper formatting with addresses and date
 """,
 
-            LetterType.RENT_DISPUTE: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.RENT_DISPUTE: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter regarding a rent dispute. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be professional and diplomatic
@@ -162,25 +170,25 @@ The letter should:
 - Include proper formatting with addresses and date
 """,
 
-            LetterType.SECURITY_DEPOSIT: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.SECURITY_DEPOSIT: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter regarding security deposit return. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be professional and clear
@@ -192,25 +200,25 @@ The letter should:
 - Include proper formatting with addresses and date
 """,
 
-            LetterType.NO_NOTICE_ENTRY: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.NO_NOTICE_ENTRY: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter regarding unauthorized entry by landlord. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be firm but professional
@@ -222,25 +230,25 @@ The letter should:
 - Include proper formatting with addresses and date
 """,
 
-            LetterType.NOISE_COMPLAINT: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.NOISE_COMPLAINT: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter about noise issues. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be respectful but clear about the problem
@@ -252,25 +260,25 @@ The letter should:
 - Include proper formatting with addresses and date
 """,
 
-            LetterType.LEASE_VIOLATION: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.LEASE_VIOLATION: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter about landlord lease violations. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be professional and factual
@@ -282,25 +290,25 @@ The letter should:
 - Include proper formatting with addresses and date
 """,
 
-            LetterType.DISCRIMINATION: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.DISCRIMINATION: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter regarding housing discrimination. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be very professional and serious in tone
@@ -312,25 +320,25 @@ The letter should:
 - Include proper formatting with addresses and date
 """,
 
-            LetterType.HABITABILITY: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.HABITABILITY: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter about habitability issues. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be serious and professional
@@ -342,25 +350,25 @@ The letter should:
 - Include proper formatting with addresses and date
 """,
 
-            LetterType.GENERAL_CONCERN: """
-IMPORTANT: """ + lang_instruction + """. The entire letter must be in the requested language.
+            LetterType.GENERAL_CONCERN: f"""
+CRITICAL LANGUAGE INSTRUCTION: {lang_instruction}
 
 Write a formal letter addressing general concerns about lease terms or landlord practices. Use this information:
 
-Date: {date}
-Tenant: {tenant_name}
-Tenant Address: {tenant_address}
-Tenant Phone: {tenant_phone}
-Tenant Email: {tenant_email}
+Date: {{date}}
+Tenant: {{tenant_name}}
+Tenant Address: {{tenant_address}}
+Tenant Phone: {{tenant_phone}}
+Tenant Email: {{tenant_email}}
 
-Landlord: {landlord_name}
-Company: {company_name}
-Landlord Address: {landlord_address}
+Landlord: {{landlord_name}}
+Company: {{company_name}}
+Landlord Address: {{landlord_address}}
 
-Context: {context}
+Context: {{context}}
 
 Specific Issues:
-{specific_issues}
+{{specific_issues}}
 
 The letter should:
 - Be professional and respectful
