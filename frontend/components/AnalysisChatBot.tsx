@@ -48,9 +48,13 @@ interface AnalysisResults {
 
 interface AnalysisChatBotProps {
   analysisResults: AnalysisResults;
+  translations: {
+    askQuestions: string;
+    issuesFound: string;
+  };
 }
 
-export default function AnalysisChatBot({ analysisResults }: AnalysisChatBotProps) {
+export default function AnalysisChatBot({ analysisResults, translations }: AnalysisChatBotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -177,11 +181,11 @@ export default function AnalysisChatBot({ analysisResults }: AnalysisChatBotProp
           className="w-full flex items-center justify-center space-x-2 bg-blue-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
         >
           <ChatBubbleBottomCenterTextIcon className="h-5 w-5" />
-          <span>Ask Questions About Your Lease</span>
+          <span>{translations.askQuestions}</span>
           {isOpen ? (
             <XMarkIcon className="h-4 w-4" />
           ) : (
-            <span className="text-blue-200 text-sm ml-2">({analysisResults.analysis.unfair_clauses.length} issues found)</span>
+            <span className="text-blue-200 text-sm ml-2">({analysisResults.analysis.unfair_clauses.length} {translations.issuesFound})</span>
           )}
         </button>
       </div>

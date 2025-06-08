@@ -150,27 +150,27 @@ class AIService:
         prompt = f"""
         You are a tenant rights expert lawyer. Analyze the following lease text and identify potentially unfair, illegal, or problematic clauses.
         
-        IMPORTANT: {lang_instruction}. All explanations, issues, and recommendations must be in the requested language.
+        CRITICAL INSTRUCTION: {lang_instruction}. You MUST write ALL text fields in the requested language. Do NOT use English if another language is requested.
 
         Lease text:
         {{text}}
 
         For each problematic clause you find, provide:
-        1. The exact clause text
-        2. Why it's problematic
+        1. A translated summary of the clause (in requested language)
+        2. Why it's problematic (in requested language)
         3. The severity (high, medium, low)
-        4. Plain English explanation
-        5. Recommended action
+        4. Clear explanation in the requested language
+        5. Recommended action in the requested language
 
         Format your response as JSON with this structure:
         {{{{
             "clauses": [
                 {{{{
-                    "clause_text": "exact text from lease",
-                    "issue": "brief description of the problem",
+                    "clause_text": "translated summary of the clause in requested language",
+                    "issue": "brief description of the problem in requested language",
                     "severity": "high/medium/low",
-                    "explanation": "plain English explanation",
-                    "recommendation": "what the tenant should do"
+                    "explanation": "clear explanation in requested language",
+                    "recommendation": "what the tenant should do in requested language"
                 }}}}
             ]
         }}}}
@@ -258,22 +258,22 @@ class AIService:
         prompt = f"""
         Analyze this lease text and extract the key tenant rights and obligations.
         
-        IMPORTANT: {lang_instruction}. All titles and descriptions must be in the requested language.
+        CRITICAL INSTRUCTION: {lang_instruction}. You MUST write ALL text fields (title, description) in the requested language. Do NOT use English if another language is requested.
 
         Lease text:
         {{text}}
 
         Identify:
-        1. Rights the tenant has
-        2. Obligations the tenant must fulfill
-        3. Important deadlines or procedures
+        1. Rights the tenant has (in requested language)
+        2. Obligations the tenant must fulfill (in requested language)
+        3. Important deadlines or procedures (in requested language)
 
         Format as JSON:
         {{{{
             "rights": [
                 {{{{
-                    "title": "Right name",
-                    "description": "What this right means",
+                    "title": "Right name in requested language",
+                    "description": "What this right means in requested language",
                     "importance": "high/medium/low"
                 }}}}
             ]
@@ -357,7 +357,7 @@ class AIService:
         You are helping low-income renters understand their lease agreements. 
         Summarize this lease document in plain, simple language that a 6th grader could understand.
         
-        IMPORTANT: {lang_instruction}. The entire summary must be in the requested language.
+        CRITICAL INSTRUCTION: {lang_instruction}. You MUST write the ENTIRE summary in the requested language. Do NOT use English if another language is requested.
 
         Focus on:
         - Key terms and conditions
@@ -365,7 +365,7 @@ class AIService:
         - What the tenant needs to know
         - Any red flags or concerns
 
-        Keep it under 300 words and use simple language.
+        Keep it under 300 words and use simple language in the requested language.
 
         Lease document:
         {{text}}
